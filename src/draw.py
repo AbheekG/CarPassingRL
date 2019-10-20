@@ -9,8 +9,8 @@ def coord_to_pt(x, y):
 	Takes input (x,y) co-ordinates and converts it to a point
 	in the grid.
 	"""
-	assert ck.x_min <= x and x <= ck.x_max, x
-	assert ck.y_min <= y and y <= ck.y_max, y
+	# assert ck.x_min <= x and x <= ck.x_max, x
+	# assert ck.y_min <= y and y <= ck.y_max, y
 	
 	# Normalize x to [0, inf]
 	x = x - ck.x_min
@@ -58,16 +58,18 @@ class Window:
 
 	def draw_cars(self, state):
 		# Draw my car.
-		self.draw_car(state.x_car, state.y_car, state.length_car, state.width_car)
+		self.draw_car(state.our_car, "blue", "blue")
 
 		# Draw other cars.
-		for i in range(len(state.x_others)):
-			if state.vx_others[i] >= 0:
-				color = "green"
-			else:
-				color = "red"
-			self.draw_car(state.x_others[i], state.y_others[i], state.length_others[i], 
-						  state.width_others[i], color, color)
+		for car in state.forward_cars:
+			assert car.vx >= 0
+			color = "green"
+			self.draw_car(car, color, color)
+
+		for car in state.backward_cars:
+			assert car.vx <= 0
+			color = "red"
+			self.draw_car(car, color, color)
 
 	def draw_grid(self, state):
 
@@ -111,7 +113,11 @@ class Window:
 			del car
 		self.cars.clear()
 	
-	def draw_car(self, xl, yl, length, breadth, color="blue", border="blue"):
+	def draw_car(self, car, color="blue", border="blue"):
+		xl = car.x
+		yl = car.y
+		length = car.l
+		breadth = car.w
 		ll = coord_to_pt(xl, yl)
 		lh = coord_to_pt(xl, yl+breadth)
 		hh = coord_to_pt(xl+length, yl+breadth)

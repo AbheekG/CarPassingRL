@@ -48,7 +48,7 @@ Y_points = np.linspace(y_min, y_max, n_y_points)
 
 # Velocity, Acceleration
 vx_max = 30  # metres/sec
-vx_min = -30  # TODO
+vx_min = 0  # TODO. Magnitude.
 vy_max = 1  # TODO
 vy_min = -1
 
