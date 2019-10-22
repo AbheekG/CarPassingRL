@@ -35,15 +35,16 @@ y_max = lane_width*2
 car_length = 5
 car_width = 2
 
-n_x_points = 50
-n_y_points = 50
+n_x_points = 150
+n_y_points = 10
 # TODO. How to balance grid accuracy, vehicle movement etc.
 # The X points are spaced by tan(dx). Assuming height of 25m, might be too large
-X_points = np.tan(np.linspace(0, np.arctan(x_max/20), n_x_points))*20
-# X_points = np.linspace(x_min, x_max, n_x_points)
+# X_points = np.tan(np.linspace(0, np.arctan(x_max/20), n_x_points))*20
+X_points = np.linspace(x_min, x_max, n_x_points)
 # TODO. Current formula considering x_min = 0
 # X_points = np.cumsum(np.linspace(x_min, 20, 20))
 Y_points = np.linspace(y_min, y_max, n_y_points)
+grid_y, grid_x = np.meshgrid(Y_points, X_points)
 # print(X_points)
 
 # Velocity, Acceleration

@@ -14,7 +14,9 @@ def step(state, win):
 	# print(state)
 	# input()
 	win.clear_cars()
+	win.clear_belief()
 	win.draw_cars(state)
+	win.draw_belief(state)
 	# input()
 
 def destroy(state, win):

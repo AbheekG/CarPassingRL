@@ -1,7 +1,20 @@
+from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 unused import
+
+import matplotlib.pyplot as plt
+from matplotlib import cm
 import numpy as np
 
 from . import graphics
 from . import constants as ck
+
+
+def plot3d(X, Y, Z):
+	fig = plt.figure()
+	ax = fig.gca(projection='3d')
+	surf = ax.plot_surface(X, Y, Z, cmap=cm.coolwarm, linewidth=0, antialiased=False)
+	# Add a color bar which maps values to colors.
+	fig.colorbar(surf, shrink=0.5, aspect=5)
+	plt.show()
 
 
 def coord_to_pt(x, y):
@@ -38,14 +51,22 @@ def pp1(x,y):
 	return graphics.Point(x_norm, y_norm)
 
 
+def color_bw(x):
+	"""x is in [0,1]."""
+	x = int(np.floor(x*256))
+	return graphics.color_rgb(x,x,x)
+
+
 class Window:
 	def __init__(self):
 		self.win = None
 		self.cars = []
+		self.belief = []
+		# self.move_x = 1.1  # Move X to right for belief drawing
 
 	def setup(self, force=False):
 		if ck.visualize or force:
-			self.win = graphics.GraphWin('Pass', 500, 500)
+			self.win = graphics.GraphWin('Pass', 600, 500)
 			self.win.setCoords(0,0,1.2,1)
 
 	def destroy(self, force=False):
@@ -53,8 +74,9 @@ class Window:
 			self.win.close()
 
 	def draw(self, state):
-		self.draw_grid(state)
+		self.draw_grid(state, False)
 		self.draw_cars(state)
+		self.draw_belief(state)
 
 	def draw_cars(self, state):
 		# Draw my car.
@@ -71,19 +93,23 @@ class Window:
 			color = "red"
 			self.draw_car(car, color, color)
 
-	def draw_grid(self, state):
-
+	def draw_grid(self, state, belief=False):
 		# Draw the grid points.
-		for x in ck.X_points:
-			for y in ck.Y_points:
-				pt = coord_to_pt(x,y) 
+		for i, x in enumerate(ck.X_points):
+			for j, y in enumerate(ck.Y_points):
+				pt = coord_to_pt(x,y)
+				if belief:
+					pt.move(self.move_x, 0)
+					pt.setFill(color_bw(state.belief.prob[i][j]))
+					self.belief.append(pt)
 				pt.draw(self.win)
 
-			pt = coord_to_pt(x, ck.Y_points[0])
-			pt.move(0.1,0)
-			text = graphics.Text(pt, "%.4f m" % x)
-			text.setSize(5)
-			text.draw(self.win)
+			if not belief:
+				pt = coord_to_pt(x, ck.Y_points[0])
+				pt.move(0.1,0)
+				text = graphics.Text(pt, "%.2f m" % x)
+				text.setSize(5)
+				text.draw(self.win)
 
 		# Draw road boundaries.
 		# Right line
@@ -95,6 +121,8 @@ class Window:
 		linc = graphics.Line(coord_to_pt(ck.x_min, y_mid), coord_to_pt(ck.x_max, y_mid))
 		# linc.setFill("yellow")
 		for lin in [linr, linl, linc]:
+			if belief:
+				lin.move(self.move_x, 0)
 			lin.draw(self.win)
 
 		# # Random line test
@@ -107,12 +135,24 @@ class Window:
 		# 	pt.setFill("red")
 		# 	pt.draw(self.win)
 
+	def draw_belief(self, state):
+		# self.draw_grid(state, belief=True)
+		# Plot
+		grid_y, grid_x = np.meshgrid(ck.Y_points, ck.X_points)
+		plot3d(grid_x, grid_y, state.belief.prob)
+		
 	def clear_cars(self):
 		for car in self.cars:
 			car.undraw()
 			del car
 		self.cars.clear()
-	
+
+	def clear_belief(self):
+		for b in self.belief:
+			b.undraw()
+			del b
+		self.belief.clear()
+
 	def draw_car(self, car, color="blue", border="blue"):
 		xl = car.x
 		yl = car.y

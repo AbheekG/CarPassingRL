@@ -1,6 +1,7 @@
 import numpy as np
 
 from . import constants as ck
+from . import belief
 
 
 class Car:
@@ -94,11 +95,9 @@ class State:
 		self.forward_cars, self.backward_cars = self._init_other_cars()
 
 		# Probability of another car or object being present at the grid location.
-		self.grid_prob = np.ones((ck.n_x_points, ck.n_y_points)) / ck.n_x_points / ck.n_y_points
-		self.grid_vx_mu = np.zeros((ck.n_x_points, ck.n_y_points))
-		self.grid_vx_sig = np.ones((ck.n_x_points, ck.n_y_points)) * 30
-		self.grid_vy_mu = np.zeros((ck.n_x_points, ck.n_y_points))
-		self.grid_vy_sig = np.ones((ck.n_x_points, ck.n_y_points)) * 1
+		self.belief = belief.Belief()
+
+		# The neural network to predict action.
 
 	def _init_our_car(self):
 		"""
@@ -167,12 +166,19 @@ class State:
 
 		return cars
 
-	def _step_car(self, car, front_car, back_car, dt):
+	def _step_car(self, car, front_car, dt):
 		# Warning: Updates the cars in-place. 
-		car.step(car.vx*dt, car.vy*dt, car.ax*dt, car.ay*dt, 0, 0)
+		sign = np.sign(car.vx)
+		if front_car is not None and sign*(car.x + car.vx*dt + car.vx*ck.t_min) > sign*front_car.x:
+			dx = front_car.x - car.x - car.vx*ck.t_min
+			vx = (front_car.vx + car.vx) / 2
+			car.step(dx=dx, dy=car.vy*dt, dvx=car.ax*dt + vx - car.vx, dvy=car.ay*dt)
+			front_car.step(dvx=vx - front_car.vx)
+		else:
+			car.step(dx=car.vx*dt, dy=car.vy*dt, dvx=car.ax*dt, dvy=car.ay*dt)
 
 	def _step_our_car(self, dt):
-		self._step_car(self.our_car, None, None, dt)
+		self._step_car(self.our_car, None, dt)
 		# TODO acceleration.
 
 	def _step_other_cars(self, dt, perturb):
@@ -183,14 +189,11 @@ class State:
 			for i in range(len(cars)):
 				car = cars[i]
 				front_car = None
-				back_car = None
 				if i > 0:
 					front_car = cars[i-1]
 					# assert np.sign(car.vx)*front_car.x > np.sign(
 					# 	car.vx)*(car.x + car.vx*ck.t_min)
-				if i < len(cars)-1:
-					back_car = cars[i+1]
-				self._step_car(car, front_car, back_car, dt)
+				self._step_car(car, front_car, dt)
 
 	def _clean_old_cars(self):
 		"""
@@ -220,6 +223,13 @@ class State:
 		self.backward_cars += new_cars
 
 	def step(self, dt=0.1, perturb=0.1):
+		# Update Belief.
+		self.belief.step(self.our_car, self.forward_cars + self.backward_cars, dt)
+
+		# Take Action only. Can be used instead of training, for only testing.
+		# ax, ay = self.nn.action(self.our_car, self.belief)
+		# Train NN.
+
 		self._step_our_car(dt)
 		self._step_other_cars(dt, perturb)
 
