@@ -11,8 +11,13 @@ class Belief:
 		self.prob = np.ones((ck.n_x_points, ck.n_y_points)) / ck.n_x_points / ck.n_y_points
 		self.vx_mu = np.zeros((ck.n_x_points, ck.n_y_points))
 		self.vy_mu = np.zeros((ck.n_x_points, ck.n_y_points))
-		self.v_sig = np.zeros((ck.n_x_points, ck.n_y_points)) + (
-			ck.vx_max - ck.vx_min + ck.vy_max - ck.vy_min)
+		# self.sig = np.zeros((ck.n_x_points, ck.n_y_points)) + (
+		# 	ck.vx_max - ck.vx_min + ck.vy_max - ck.vy_min)
+
+		# Only for testing.
+		# self.prob = np.arange(ck.n_x_points*ck.n_y_points).reshape((ck.n_x_points, ck.n_y_points)) / ck.n_x_points / ck.n_y_points
+		# self.vx_mu = np.ones((ck.n_x_points, ck.n_y_points)) * ck.x_gap
+		# self.vy_mu = np.ones((ck.n_x_points, ck.n_y_points)) * ck.y_gap
 
 	@staticmethod
 	def _get_sig(x, y, our_car):
@@ -53,61 +58,125 @@ class Belief:
 		vx_mu = np.zeros((ck.n_x_points, ck.n_y_points))
 		vy_mu = np.zeros((ck.n_x_points, ck.n_y_points))
 
-		WX = []
-		WY = []
+		# We get position of arbitrary number of cars
+		Weights = []
 		VX = []
 		VY = []
 
 		for car in cars:
-			# Get the variance in observation.
-			_, sig_x, sig_y = Belief._get_sig(car.x, car.y, our_car)
+			# Get the variance in observation. Center of other car.
+			_, sig_x, sig_y = Belief._get_sig(car.x + car.l/2, car.y + car.w/2, our_car)
 			# Perturb the actual values (add error in observation). Multiplicative.
-			x = car.x + (ck.x_max-ck.x_min)*np.random.normal(1, sig_x)
-			y = car.y + (ck.y_max-ck.y_min)*np.random.normal(1, sig_y)
-			vx = car.vx + (ck.vx_max-ck.vx_min)*np.random.normal(1, sig_x)
-			vy = car.vy + (ck.vy_max-ck.vy_min)*np.random.normal(1, sig_y)
+			x = car.x + car.l/2 + (ck.x_max-ck.x_min)*np.random.normal(0, sig_x)
+			y = car.y + car.w/2 + (ck.y_max-ck.y_min)*np.random.normal(0, sig_y)
+			vx = car.vx + (ck.vx_max-ck.vx_min)*np.random.normal(0, sig_x)
+			vy = car.vy + (ck.vy_max-ck.vy_min)*np.random.normal(0, sig_y)
 
-			# Find the weights
-			weights_x = stats.norm(0, np.abs(ck.grid_x-our_car.x)*sig_x + 0.1).pdf(np.abs(ck.grid_x - x))
-			weights_y = stats.norm(0, np.abs(ck.grid_y-our_car.y)*sig_y + 0.1).pdf(np.abs(ck.grid_y - y))
+			# Find the weights. TODO: Might be wrong. The sigmas are not scaled.
+			# weights_x = stats.norm(0, np.abs(ck.grid_x-our_car.x)*sig_x + 0.1).pdf(np.abs(ck.grid_x - x))
+			# weights_y = stats.norm(0, np.abs(ck.grid_y-our_car.y)*sig_y + 0.1).pdf(np.abs(ck.grid_y - y))
+			# The one below might be correct.
+			weights_x = stats.norm(x, np.abs(x-our_car.x)*sig_x + 0.1).pdf(ck.grid_x)
+			weights_y = stats.norm(y, np.abs(y-our_car.y)*sig_y + 0.1).pdf(ck.grid_y)
 			weights = weights_x * weights_y
-			for w in [weights, weights_x, weights_y]:
-				w /= w.sum()
+			weights += ck.prob_unif_blur
+			weights /= weights.sum()
 
 			assert not np.isnan(weights).any()
 			assert weights.all() >= 0
 			# TODO: Why the spikes in plot for low y? Probabily floating pt error.
-			print(x, y); draw.plot3d(ck.grid_x, ck.grid_y, weights_x)
-			print(x, y); draw.plot3d(ck.grid_x, ck.grid_y, weights_y)
-			print(x, y); draw.plot3d(ck.grid_x, ck.grid_y, weights)
+			# print(x, y); draw.plot3d(ck.grid_x, ck.grid_y, weights)
 
 			prob += weights
-			WX.append(weights_x)
-			WY.append(weights_y)
+			# Append the weights. We will add the velocity according to the weight.
+			Weights.append(weights)
 			VX.append(vx)
 			VY.append(vy)
 
+		# Adding some prob to all points to avoid 0.
+		n_car = prob.sum()
+		prob += 1e-3
+		prob = prob / prob.sum() * n_car
 
+		# Averaging the velocity contribution according to weights for each point.
+		Weights = np.array(Weights)
+		Weights /= Weights.sum(0)
+		vx_mu = (np.array(VX).reshape((len(VX),1,1)) * Weights).sum(0)
+		vy_mu = (np.array(VY).reshape((len(VY),1,1)) * Weights).sum(0)
+
+		# draw.plot3d(ck.grid_x, ck.grid_y, prob)
+		# draw.plot3d(ck.grid_x, ck.grid_y, vx_mu)
+		# draw.plot3d(ck.grid_x, ck.grid_y, vy_mu)
 
 		return prob, vx_mu, vy_mu
 
 	def _sensor_update(self, our_car, cars):
-		prob_new, vx_mu_new, vy_mu_new, v_sig_new = Belief._sensor_measurement(our_car, cars)
+		prob_new, vx_mu_new, vy_mu_new = Belief._sensor_measurement(our_car, cars)
+
 		# TODO: Check whether the following trick is sound
-		w_new = stats.norm(0, v_sig_new).pdf(0)
-		w_old = stats.norm(0, self.v_sig).pdf(0)
-		w_sum = w_old + w_new
-		w_new /= w_sum
-		w_old /= w_sum
+		# w_new = stats.norm(0, v_sig_new).pdf(0)
+		# w_old = stats.norm(0, self.v_sig).pdf(0)
+		# w_sum = w_old + w_new
+		# w_new /= w_sum
+		# w_old /= w_sum
+		"""
+		Making assumption that total probability sums up to number of cars.
+		"""
+		n_cars = prob_new.sum()
+		prob = self.prob * prob_new
+		prob = prob / prob.sum() * n_cars
 
-		prob = prob_new * w_new + self.prob * w_old
-		vx_mu = vx_mu_new * w_new + self.vx_mu * w_old
-		vy_mu = vy_mu_new * w_new + self.vy_mu * w_old
-		v_sig = v_sig_new * w_new + self.v_sig * w_old
+		# Adding some prob to all points to avoid 0.
+		prob += 1e-3
+		prob = prob / prob.sum() * n_cars
 
-		return prob, vx_mu, vy_mu, v_sig
+		# Find the VX by averaging depending on probabilities. TODO. Might be incorrect.
+		Probs = np.array([prob_new, self.prob])
+		Probs /= Probs.sum(0)
+		vx_mu = (np.array([vx_mu_new, self.vx_mu]) * Probs).sum(0)
+		vy_mu = (np.array([vy_mu_new, self.vy_mu]) * Probs).sum(0)
+		# draw.plot3d(ck.grid_x, ck.grid_y, prob)
+		# draw.plot3d(ck.grid_x, ck.grid_y, vx_mu)
+		# draw.plot3d(ck.grid_x, ck.grid_y, vy_mu)
 
-	def _action_update(self, dt):
+		return prob, vx_mu, vy_mu
+
+	@staticmethod
+	def _grid_to_index(grid_x, grid_y):
+		"""
+		Rounds the values to nearest index of X and Y.
+		"""
+		# np.clip(grid_x,ck.x_min,ck.x_max) changed to grid_x.
+		# Because it was accumulating mass at the boundary.
+		idx_x = np.mod(np.round((grid_x - ck.x_min) / ck.x_gap).astype(int), ck.n_x_points)
+		idx_y = np.mod(np.round((grid_y - ck.y_min) / ck.y_gap).astype(int), ck.n_y_points)
+
+		return idx_x, idx_y
+
+	def _action_update(self, our_car, dt):
+		prob = np.zeros((ck.n_x_points, ck.n_y_points))
+		vx_mu = np.zeros((ck.n_x_points, ck.n_y_points))
+		vy_mu = np.zeros((ck.n_x_points, ck.n_y_points))
+
+		# The new index point. Move the grid by velocity.
+		idx_x, idx_y = self._grid_to_index(ck.grid_x + dt*self.vx_mu, ck.grid_y + dt*self.vy_mu)
+		# print(idx_x, idx_y)
+		np.add.at(prob, (idx_x, idx_y), self.prob)
+		np.add.at(vx_mu, (idx_x, idx_y), self.vx_mu)
+		np.add.at(vy_mu, (idx_x, idx_y), self.vy_mu)
+
+		# TODO: Gaussian blur with different sigma for different X and Y.
+		# Only doing for the nearby 3x3 points.
+		# _, sig_x, sig_y = self._get_sig(grid_x, grid_y, our_car)
+
+		# Adding some prob to all points to avoid 0.
+		n_car = prob.sum()
+		prob += ck.prob_unif_blur
+		prob = prob / prob.sum() * n_car
+
+		return prob, vx_mu, vy_mu
+
+	def _action_update_old(self, our_car, dt):
 		prob = np.zeros((ck.n_x_points, ck.n_y_points))
 		vx_mu = np.zeros((ck.n_x_points, ck.n_y_points))
 		vy_mu = np.zeros((ck.n_x_points, ck.n_y_points))
@@ -137,5 +206,6 @@ class Belief:
 		"""
 		Update the belief.
 		"""
-		# self.prob, self.vx_mu, self.vy_mu, self.v_sig = self._action_update(dt)
-		self.prob, self.vx_mu, self.vy_mu, self.v_sig = self._sensor_measurement(our_car, cars)
+		self.prob, self.vx_mu, self.vy_mu = self._action_update(our_car, dt)
+		self.prob, self.vx_mu, self.vy_mu = self._sensor_update(our_car, cars)
+		# self.prob, self.vx_mu, self.vy_mu = self._sensor_measurement(our_car, cars)

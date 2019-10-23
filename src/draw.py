@@ -148,10 +148,12 @@ class Window:
 		self.cars.clear()
 
 	def clear_belief(self):
-		for b in self.belief:
-			b.undraw()
-			del b
-		self.belief.clear()
+		# TODO
+		plt.close()
+		# for b in self.belief:
+		# 	b.undraw()
+		# 	del b
+		# self.belief.clear()
 
 	def draw_car(self, car, color="blue", border="blue"):
 		xl = car.x

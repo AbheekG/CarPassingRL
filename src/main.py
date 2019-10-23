@@ -10,13 +10,13 @@ def init():
 	return state, win
 
 def step(state, win):
-	state.step()
+	state.step(dt=1)
 	# print(state)
 	# input()
 	win.clear_cars()
-	win.clear_belief()
+	# win.clear_belief()
 	win.draw_cars(state)
-	win.draw_belief(state)
+	# win.draw_belief(state)
 	# input()
 
 def destroy(state, win):
