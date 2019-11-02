@@ -82,3 +82,6 @@ acc_weight = 1
 lane_weight = 1
 collision_weight = 1000
 discount = 0.999
+
+# Training.
+batch = 2  # Batching while training.

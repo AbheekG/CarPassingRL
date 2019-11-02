@@ -72,13 +72,19 @@ class CNN(nn.Module):
         # nn.init.xavier_uniform_(self.fc4.weight)
 
     # Forward computation. Backward computation is done implicitly.
-    def forward(self, our_car, belief):
-        # TODO: Batch.
-        assert len(belief.size()) == 3
-        belief = belief.view(1, belief.size()[0], belief.size()[1], belief.size()[2])
-        
-        our_car = torch.tensor([our_car.x, our_car.y, our_car.vx, our_car.vy,
-            our_car.ax, our_car.ay]).view(1, 6)
+    def forward(self, our_car_, belief_):
+        if isinstance(our_car_, list):
+            # Batching
+            our_car = torch.tensor([[car.x, car.y, car.vx,
+                car.vy, car.ax, car.ay] for car in our_car_])
+            belief = torch.stack(belief_)
+        else:
+            our_car, belief = our_car_, belief_
+            assert len(belief.size()) == 3
+            our_car = torch.tensor([our_car.x, our_car.y, our_car.vx, our_car.vy,
+                our_car.ax, our_car.ay]).view(1, 6)
+            belief = belief.view(1, belief.size()[0], belief.size()[1], belief.size()[2])
+
         our_car = self.nl1_(self.layer1_(self.drop1_(our_car)))
         our_car = self.nl2_(self.layer2_(self.drop2_(our_car)))
         our_car = our_car.view(belief.size())
@@ -90,5 +96,6 @@ class CNN(nn.Module):
         out = self.bn3(self.nl3(self.layer3(self.drop3(out))))
         out = self.nl4(self.layer4(self.drop4(out.view(out.size()[0], -1))))
         out = self.nl5(self.layer5(self.drop5(out)))
+
         return out
 
