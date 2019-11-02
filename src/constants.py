@@ -59,6 +59,10 @@ ax_max = 5  # metres/sec/sec
 ax_min = -5
 ay_max = 1
 ay_min = -1
+n_x_actions = int(ax_max-ax_min) + 1
+n_y_actions = int(ay_max-ay_min) + 1
+X_actions = np.linspace(ax_min, ax_max, n_x_actions)
+Y_actions = np.linspace(ay_min, ay_max, n_y_actions)
 
 # Minimum following distance. Measured in sec.
 t_min = 3
@@ -71,3 +75,10 @@ visualize = True
 
 # Belief
 prob_unif_blur = 3e-3
+
+# Cost weights
+vel_weight = 1
+acc_weight = 1
+lane_weight = 1
+collision_weight = 1000
+discount = 0.999

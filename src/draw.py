@@ -76,7 +76,7 @@ class Window:
 	def draw(self, state):
 		self.draw_grid(state, False)
 		self.draw_cars(state)
-		self.draw_belief(state)
+		# self.draw_belief(state)
 
 	def draw_cars(self, state):
 		# Draw my car.

@@ -1,4 +1,5 @@
 import numpy as np
+import torch
 
 from . import constants as ck
 from . import belief
@@ -90,7 +91,7 @@ class Car:
 			exec("self.%s = np.clip(self.%s + d%s, self.%s_min, self.%s_max)" % ( (var,)*5 ))
 
 class State:
-	def __init__(self):
+	def __init__(self, nn):
 		self.our_car = self._init_our_car()
 		self.forward_cars, self.backward_cars = self._init_other_cars()
 
@@ -98,6 +99,7 @@ class State:
 		self.belief = belief.Belief()
 
 		# The neural network to predict action.
+		self.nn = nn
 
 	def _init_our_car(self):
 		"""
@@ -170,6 +172,7 @@ class State:
 		# Warning: Updates the cars in-place. 
 		sign = np.sign(car.vx)
 		if front_car is not None and sign*(car.x + car.vx*dt + car.vx*ck.t_min) > sign*front_car.x:
+			# TODO. Change, this leads to clustering of cars.
 			dx = front_car.x - car.x - car.vx*ck.t_min
 			vx = (front_car.vx + car.vx) / 2
 			car.step(dx=dx, dy=car.vy*dt, dvx=car.ax*dt + vx - car.vx, dvy=car.ay*dt)
@@ -178,6 +181,12 @@ class State:
 			car.step(dx=car.vx*dt, dy=car.vy*dt, dvx=car.ax*dt, dvy=car.ay*dt)
 
 	def _step_our_car(self, dt):
+		# Take Action.
+		ax, ay = self._action()
+
+		self.our_car.step(dx=self.our_car.vx*dt, dy=self.our_car.vy*dt,
+			dvx=self.our_car.ax*dt, dvy=self.our_car.ay*dt,
+			dax=(ax-self.our_car.ax)*dt, day=(ay-self.our_car.ay)*dt)
 		self._step_car(self.our_car, None, dt)
 		# TODO acceleration.
 
@@ -222,13 +231,18 @@ class State:
 		new_cars = self._add_other_cars(x_min=x, forward=False)
 		self.backward_cars += new_cars
 
+	def _action(self):
+		belief_concat = torch.FloatTensor([self.belief.prob, self.belief.vx_mu, self.belief.vy_mu])
+		action_probs = self.nn(self.our_car, belief_concat)
+		action_idx = int(torch.multinomial(action_probs.flatten(), 1).item())
+		ax = ck.X_actions[int(action_idx / ck.n_y_actions)]
+		ay = ck.Y_actions[action_idx % ck.n_y_actions]
+		# print(action_probs.flatten(), action_idx, ax, ay)
+		return ax, ay
+
 	def step(self, dt=0.1, perturb=0.1):
 		# Update Belief.
 		self.belief.step(self.our_car, self.forward_cars + self.backward_cars, dt)
-
-		# Take Action only. Can be used instead of training, for only testing.
-		# ax, ay = self.nn.action(self.our_car, self.belief)
-		# Train NN.
 
 		self._step_our_car(dt)
 		self._step_other_cars(dt, perturb)
@@ -244,4 +258,4 @@ class State:
 		# Add new cars.
 		self._add_new_cars(origin_movement)
 
-		print(len(self.backward_cars))
+		# print(len(self.backward_cars))
