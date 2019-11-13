@@ -77,11 +77,12 @@ visualize = True
 prob_unif_blur = 3e-3
 
 # Cost weights
-vel_weight = 1
-acc_weight = 1
-lane_weight = 1
+vel_weight = 1e-3
+acc_weight = 1e-3
+lane_weight = 1e-3
 collision_weight = 1000
 discount = 0.999
+exploration = 0.5
 
 # Training.
-batch = 2  # Batching while training.
+batch = 32  # Batching while training.

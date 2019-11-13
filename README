@@ -1,0 +1,10 @@
+Car Overtake Problem
+====================
+We learn a controller using Q-learning for a car on a two-lane road. The car learns to either overtake (pass) or stay behind the car in front. The input to the controller is the belief over the state of the world. Some more details here: https://www.overleaf.com/read/yywhtqfyzbch
+
+To train do:
+`python main.py`
+
+For visualization uncomment the visualization code in `main.py`.
+
+Status: The model is not learning even after significant hyper-parameter tuning. But, the code can be useful for similar problems.

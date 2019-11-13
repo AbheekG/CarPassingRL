@@ -96,13 +96,17 @@ def generate_run(model, time_steps, dt, show):
 		cost = [cost_functions.cost_vel(state)*ck.vel_weight,
 			cost_functions.cost_acc(state)*ck.acc_weight,
 			cost_functions.cost_lane(state)*ck.lane_weight,
-			cost_functions.cost_collision(state)*ck.collision_weight]
+			cost_functions.cost_collision(state, dt)*ck.collision_weight]
 		our_cars.append(copy.deepcopy(our_car))
 		beliefs.append(copy.deepcopy(belief))
 		costs.append(sum(cost))
 
 		if cost[-1] > 0.1:  # Collision
 			break
+
+	if show:
+		input()
+		win.destroy()
 
 	return our_cars, beliefs, costs, i_collision
 
@@ -119,10 +123,6 @@ def train(model, prev_epoch=0, epochs=100, time_steps=1000, dt=1, show=False,
 
 		print("Epoch: %d. Collision: %d/%d" % (prev_epoch+epoch, i_collision, time_steps))
 		collision_length.append(i_collision)
-
-		if show:
-			input()
-			win.destroy()
 
 		# TODO. Training model with(/out) collision. May cause issues.
 		train_run(model, optimizer, our_cars, beliefs, costs, batch_size)
@@ -199,7 +199,7 @@ def main():
 	except:
 		collision_length = []
 
-	collision_length += train(model, prev_epoch=len(collision_length))
+	collision_length += train(model, prev_epoch=len(collision_length), epochs=1000)
 
 	torch.save(model.state_dict(), model_path)
 	pickle.dump(collision_length, open(collision_path, 'wb'))
