@@ -11,9 +11,9 @@ class CNN(nn.Module):
     """
     For other car belief.
     """
-    def __init__(self, nx=ck.n_x_points, ny=ck.n_y_points, nc0=3,
+    def __init__(self, nx=ck.n_x_points, ny=ck.n_y_points, nc0=1,
         out=ck.n_x_actions*ck.n_y_actions,
-        input_=6, # For our car.
+        input_=4, # For our car.
         drop=0):
         super(CNN, self).__init__()
 
@@ -28,30 +28,30 @@ class CNN(nn.Module):
         self.nl2_ = nn.ReLU()
 
         # For other cars
-        nc1 = 32
+        nc1 = 16
         self.drop1 = nn.Dropout(drop)
-        self.layer1 = nn.Conv2d(nc0*2, nc1, (5,3), stride=(2,2))
+        self.layer1 = nn.Conv2d(nc0*2, nc1, (5,1), stride=(2,1))
         nx = int((nx-3)/2)
-        ny = int((ny-1)/2)
-        # Output: x=200->98. y=5->2
+        ny = ny
+        # Output: x=101->49. y=2->2
         self.nl1 = nn.ReLU()
         self.bn1 = nn.BatchNorm2d(nc1)
 
-        nc2 = 64
+        nc2 = 32
         self.drop2 = nn.Dropout(drop)
         self.layer2 = nn.Conv2d(nc1, nc2, (5,1), stride=(2,1))
         nx = int((nx-3)/2)
         ny = ny
-        # Output: x=98->47. y=2->2
+        # Output: x=49->23. y=2->2
         self.nl2 = nn.ReLU()
         self.bn2 = nn.BatchNorm2d(nc2)
 
-        nc3 = 128
+        nc3 = 64
         self.drop3 = nn.Dropout(drop)
         self.layer3 = nn.Conv2d(nc2, nc3, (5,2), stride=(2,1))
         nx = int((nx-3)/2)
         ny = ny-1
-        # Output: x=47->22. y=2->1
+        # Output: x=23->10. y=2->1
         self.nl3 = nn.ReLU()
         self.bn3 = nn.BatchNorm2d(nc3)
 
@@ -76,13 +76,12 @@ class CNN(nn.Module):
         if isinstance(our_car_, list):
             # Batching
             our_car = torch.tensor([[car.x, car.y, car.vx,
-                car.vy, car.ax, car.ay] for car in our_car_])
+                car.vy] for car in our_car_])
             belief = torch.stack(belief_)
         else:
             our_car, belief = our_car_, belief_
             assert len(belief.size()) == 3
-            our_car = torch.tensor([our_car.x, our_car.y, our_car.vx, our_car.vy,
-                our_car.ax, our_car.ay]).view(1, 6)
+            our_car = torch.tensor([our_car.x, our_car.y, our_car.vx, our_car.vy]).view(1, 4)
             belief = belief.view(1, belief.size()[0], belief.size()[1], belief.size()[2])
 
         our_car = self.nl1_(self.layer1_(self.drop1_(our_car)))

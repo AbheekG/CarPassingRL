@@ -26,7 +26,7 @@ def coord_to_pt(x, y):
 	# assert ck.y_min <= y and y <= ck.y_max, y
 	
 	# Normalize x to [0, inf]
-	x = x - ck.x_min
+	x = (x - ck.x_min)*5
 	# Normalize y to [0, 1]
 	y = 1 - (y - ck.y_min) / (ck.y_max - ck.y_min)
 	return pp1(x,y)
@@ -158,8 +158,11 @@ class Window:
 	def draw_car(self, car, color="blue", border="blue"):
 		xl = car.x
 		yl = car.y
-		length = car.l
-		breadth = car.w
+		# TODO. Hack done here.
+		if yl > (ck.y_min + ck.y_max)/2:
+			yl = (ck.y_min + ck.y_max)/2
+		length = ck.x_gap
+		breadth = ck.y_gap/2
 		ll = coord_to_pt(xl, yl)
 		lh = coord_to_pt(xl, yl+breadth)
 		hh = coord_to_pt(xl+length, yl+breadth)
