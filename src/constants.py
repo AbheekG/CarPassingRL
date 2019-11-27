@@ -56,8 +56,8 @@ assert n_y_actions == 3
 X_actions = np.linspace(ax_min, ax_max, n_x_actions)
 Y_actions = np.linspace(ay_min, ay_max, n_y_actions)
 
-# Minimum following distance. Measured in sec.
-t_min = 3
+# Minimum following distance. Measured in sec/5.
+t_min = 1
 
 # Incoming Vehicles. Poisson Distribution Parameter
 poisson = 0.05
@@ -69,12 +69,12 @@ visualize = True
 prob_unif_blur = 3e-3
 
 # Cost weights
-vel_weight = 1e-3
-acc_weight = 1e-3
-lane_weight = 1e-3
+vel_weight = 1
+acc_weight = 1
+lane_weight = 1
 collision_weight = 1000
 discount = 0.999
-exploration = 0.5
+exploration = 0.01
 
 # Training.
 batch = 32  # Batching while training.

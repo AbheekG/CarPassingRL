@@ -26,7 +26,7 @@ def coord_to_pt(x, y):
 	# assert ck.y_min <= y and y <= ck.y_max, y
 	
 	# Normalize x to [0, inf]
-	x = (x - ck.x_min)*5
+	x = (x - ck.x_min)*10
 	# Normalize y to [0, 1]
 	y = 1 - (y - ck.y_min) / (ck.y_max - ck.y_min)
 	return pp1(x,y)

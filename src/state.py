@@ -3,6 +3,7 @@ import torch
 
 from . import constants as ck
 from . import belief
+from . import control
 
 
 class Car:
@@ -35,7 +36,7 @@ class Car:
 			# exec("self.%s = np.clip(self.%s + d%s, ck.%s_min, ck.%s_max)" % ( (var,)*5 ))
 
 class State:
-	def __init__(self, nn):
+	def __init__(self):
 		self.our_car = self._init_our_car()
 		self.forward_cars, self.backward_cars = self._init_other_cars()
 
@@ -43,7 +44,7 @@ class State:
 		self.belief = belief.Belief()
 
 		# The neural network to predict action.
-		self.nn = nn
+		self.control = control.Control()
 
 	def _init_our_car(self):
 		"""
@@ -146,16 +147,16 @@ class State:
 			)
 
 	def _action(self):
-		belief_concat = torch.FloatTensor([self.belief.prob])
-		action_probs = self.nn(self.our_car, belief_concat)
-		action_idx = int(torch.multinomial(action_probs.flatten(), 1).item())
-		# Exploration
-		if np.random.uniform() < ck.exploration:
-			action_idx = np.random.randint(0, ck.n_x_actions*ck.n_y_actions)
-		ax = ck.X_actions[int(action_idx / ck.n_y_actions)]
-		ay = ck.Y_actions[action_idx % ck.n_y_actions]
-		# print(action_probs.flatten(), action_idx, ax, ay)
-		return ax, ay
+		# belief_concat = torch.FloatTensor([self.belief.prob])
+		# action_probs = self.nn(self.our_car, belief_concat)
+		# action_idx = int(torch.multinomial(action_probs.flatten(), 1).item())
+		# # Exploration
+		# if np.random.uniform() < ck.exploration:
+		# 	action_idx = np.random.randint(0, ck.n_x_actions*ck.n_y_actions)
+		# ax = ck.X_actions[int(action_idx / ck.n_y_actions)]
+		# ay = ck.Y_actions[action_idx % ck.n_y_actions]
+		# # print(action_probs.flatten(), action_idx, ax, ay)
+		return self.control.action(self.our_car, self.belief)
 
 	def step(self):
 		# Update Belief.
