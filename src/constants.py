@@ -72,7 +72,7 @@ prob_unif_blur = 3e-3
 vel_weight = 1
 acc_weight = 1
 lane_weight = 1
-collision_weight = 1000
+collision_weight = 100
 discount = 0.999
 exploration = 0.01
 

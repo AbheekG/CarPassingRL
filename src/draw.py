@@ -8,6 +8,8 @@ from . import graphics
 from . import constants as ck
 
 
+scale = 5
+
 def plot3d(X, Y, Z):
 	fig = plt.figure()
 	ax = fig.gca(projection='3d')
@@ -26,7 +28,7 @@ def coord_to_pt(x, y):
 	# assert ck.y_min <= y and y <= ck.y_max, y
 	
 	# Normalize x to [0, inf]
-	x = (x - ck.x_min)*10
+	x = (x - ck.x_min)*scale
 	# Normalize y to [0, 1]
 	y = 1 - (y - ck.y_min) / (ck.y_max - ck.y_min)
 	return pp1(x,y)
@@ -107,7 +109,7 @@ class Window:
 			if not belief:
 				pt = coord_to_pt(x, ck.Y_points[0])
 				pt.move(0.1,0)
-				text = graphics.Text(pt, "%.2f m" % x)
+				text = graphics.Text(pt, "%.2f m" % (x*scale))
 				text.setSize(5)
 				text.draw(self.win)
 
@@ -157,12 +159,12 @@ class Window:
 
 	def draw_car(self, car, color="blue", border="blue"):
 		xl = car.x
-		yl = car.y
+		yl = car.y + (ck.y_min + ck.y_max)/12
 		# TODO. Hack done here.
 		if yl > (ck.y_min + ck.y_max)/2:
-			yl = (ck.y_min + ck.y_max)/2
+			yl = 7*(ck.y_min + ck.y_max)/12
 		length = ck.x_gap
-		breadth = ck.y_gap/2
+		breadth = ck.y_gap/3
 		ll = coord_to_pt(xl, yl)
 		lh = coord_to_pt(xl, yl+breadth)
 		hh = coord_to_pt(xl+length, yl+breadth)

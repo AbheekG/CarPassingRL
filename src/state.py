@@ -3,7 +3,6 @@ import torch
 
 from . import constants as ck
 from . import belief
-from . import control
 
 
 class Car:
@@ -36,7 +35,7 @@ class Car:
 			# exec("self.%s = np.clip(self.%s + d%s, ck.%s_min, ck.%s_max)" % ( (var,)*5 ))
 
 class State:
-	def __init__(self):
+	def __init__(self, control):
 		self.our_car = self._init_our_car()
 		self.forward_cars, self.backward_cars = self._init_other_cars()
 
@@ -44,7 +43,7 @@ class State:
 		self.belief = belief.Belief()
 
 		# The neural network to predict action.
-		self.control = control.Control()
+		self.control = control
 
 	def _init_our_car(self):
 		"""

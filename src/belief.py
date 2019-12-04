@@ -2,7 +2,7 @@ import numpy as np
 import scipy.stats as stats
 
 from . import constants as ck
-from . import draw
+# from . import draw
 
 
 class Belief:
@@ -38,15 +38,30 @@ class Belief:
 		else:
 			car_f1 = {"x": ck.x_max, "sig": 0}
 
-		if len(forward_cars) > 1:
+		if len(forward_cars) > 1 and abs(forward_cars[-2].y - our_car.y) > ck.y_gap/2:
+			# Second condition for our car in other lane as this car.
 			car_f2 = {"x": forward_cars[-2].x, "sig": 0}
 		else:
-			car_f2 = {"x": ck.x_max, "sig": 0}
+			car_f2 = {"x": ck.x_max, "sig": ck.x_max}
 
-		if len(backward_cars) > 0:
+		if len(backward_cars) > 0 and (
+			len(forward_cars) == 0 or 
+			abs(backward_cars[0].y - our_car.y) < ck.y_gap/2 or
+			abs(backward_cars[0].x - our_car.x) < 4*abs(forward_cars[-1].x - our_car.x)):
+			# Second condition: we see car in other lane if we are in other lane or it is close
 			car_b1 = {"x": backward_cars[0].x, "sig": 0}
 		else:
-			car_b1 = {"x": ck.x_max, "sig": 0}
+			car_b1 = {"x": ck.x_max, "sig": ck.x_max}
+
+		# Add error
+		car_f1["sig"] = np.sqrt(car_f1["x"])/5  # Low error for this guy.
+		car_f2["sig"] = np.sqrt(car_f2["x"])
+		car_b1["sig"] = np.sqrt(car_b1["x"])
+
+		for car in [car_f1, car_f2, car_b1]:
+			# print(car["x"], car["sig"], end=' || ')
+			car["x"] += np.random.normal(0, car["sig"]**2)
+			# print(car["x"])
 		
 		return car_f1, car_f2, car_b1
 
@@ -67,19 +82,20 @@ class Belief:
 
 		return car_f1, car_f2, car_b1
 
-
 	def _action_update(self, our_car):
-		def _update(car, sign=1):
-			car["x"] += sign * (ck.vx_min + ck.vx_max)/2
-			car["sig"] += car["x"]
+		
+		car_b1 = self.car_b1
+		car_b1["x"] -= (ck.vx_min + ck.vx_max)
+		# If negative x, then decrease confidence.
+		if car_b1["x"] < 0:
+			car_b1["sig"] *= 2
 
-		return _update(car_f1), _update(car_f2), _update(car_b1, sign=-1)
-
+		return self.car_f1, self.car_f2, car_b1
 
 	def step(self, our_car, forward_cars, backward_cars):
 		"""
 		Update the belief.
 		"""
-		# self.prob = self._action_update(our_car)
-		self.car_f1, self.car_f2, self.car_b1 = self._sensor_measurement(our_car, forward_cars, backward_cars)
-		# self.prob, self.vx_mu, self.vy_mu = self._sensor_measurement(our_car, cars)
+		self.car_f1, self.car_f2, self.car_b1 = self._action_update(our_car)
+		# self.car_f1, self.car_f2, self.car_b1 = self._sensor_measurement(our_car, forward_cars, backward_cars)
+		self.car_f1, self.car_f2, self.car_b1 = self._sensor_update(our_car, forward_cars, backward_cars)
